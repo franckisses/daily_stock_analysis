@@ -205,15 +205,15 @@ def generate_aligned_report(exchange_data, output_file='paired_currency_report.h
 
 def send_currency_report(html_file, receiver_email):
     # --- 1. 邮件基础配置 ---
-    sender_email = os.environ.get("EMAIL_SENDER")
-    sender_password = os.environ.get("EMAIL_PASSWORD", "") # 注意：通常是“应用专用密码”，而非登录密码
+    sender_email = os.getenv("EMAIL_SENDER") # 发件人地址
+    sender_password = os.getenv("EMAIL_PASSWORD") # 注意：通常是“应用专用密码”，而非登录密码
     smtp_server = "smtp.gmail.com"       # 如 smtp.gmail.com 或 smtp.office365.com
     smtp_port = 587                        # 常用端口：587 (TLS) 或 465 (SSL)
 
     # 创建邮件容器
     msg = MIMEMultipart()
     msg['From'] = sender_email
-    msg['To'] = os.environ.get("EMAIL_RECEIVERS") # 可以是逗号分隔的多个地址
+    msg['To'] = [r.strip() for r in os.getenv('EMAIL_RECEIVERS', '').split(',') if r.strip()], # 可以是逗号分隔的多个地址
     msg['Subject'] = f"📊 Daily Exchange Rate Analysis Report - {pd.Timestamp.now().strftime('%Y-%m-%d')}"
 
     # --- 2. 邮件正文 (简短导语) ---
