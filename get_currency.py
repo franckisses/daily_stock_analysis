@@ -213,7 +213,7 @@ def send_currency_report(html_file, receiver_email):
     # 创建邮件容器
     msg = MIMEMultipart()
     msg['From'] = sender_email
-    msg['To'] = [r.strip() for r in os.getenv('EMAIL_RECEIVERS', '').split(',') if r.strip()], # 可以是逗号分隔的多个地址
+    msg['To'] = os.getenv('EMAIL_RECEIVERS', '') # 可以是逗号分隔的多个地址
     msg['Subject'] = f"📊 Daily Exchange Rate Analysis Report - {pd.Timestamp.now().strftime('%Y-%m-%d')}"
 
     # --- 2. 邮件正文 (简短导语) ---
