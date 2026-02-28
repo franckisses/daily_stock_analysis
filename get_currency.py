@@ -106,149 +106,151 @@ def fetch_timeseries(start_date, end_date, base='USD', symbols=None):
     }
     return filtered
 
-
-def generate_aligned_report(exchange_data, output_file='paired_currency_report.html'):
+def construct_mobile_friendly_html(exchange_data):
     """
-    生成一个每行显示一对互为倒数汇率的 HTML 报告。
+    构造单列布局、且互为倒数汇率成对出现的 HTML 报告。
     """
-    # 1. 数据准备
     df = pd.DataFrame(exchange_data).T
+    # 💡 核心修复：将索引转换为日期时间类型，这样 idxmax() 返回的就是 Timestamp 对象
     df.index = pd.to_datetime(df.index)
-    df = df.sort_index()
-    
     all_currencies = ["USD"] + [c[3:] for c in df.columns]
-    # 使用 combinations 获取 15 组，然后在循环中手动生成它们的 A->B 和 B->A
+    # 使用 combinations 获取基础对子（例如 15 对）
     base_pairs = list(combinations(all_currencies, 2))
     
-    html_content = """
+    html_start = """
+    <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 40px; }
-            h1 { color: #1a3a5f; text-align: center; margin-bottom: 10px; }
-            .subtitle { text-align: center; color: #666; margin-bottom: 40px; }
-            .row { display: flex; justify-content: space-between; margin-bottom: 30px; gap: 20px; }
-            .card { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); padding: 20px; width: 48%; border-top: 5px solid #3498db; }
-            .card.reverse { border-top: 5px solid #e67e22; } /* 反向汇率用不同颜色区分 */
-            .card h3 { margin: 0 0 15px 0; font-size: 1.2em; color: #2c3e50; display: flex; justify-content: space-between; }
-            .badge { font-size: 0.7em; padding: 4px 8px; border-radius: 4px; background: #eee; }
-            img { width: 100%; height: auto; border-radius: 4px; }
-            .footer { text-align: center; padding: 40px; color: #95a5a6; font-size: 0.8em; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+                   background-color: #f0f2f5; margin: 0; padding: 10px; }
+            .header { background: linear-gradient(135deg, #1a3a5f 0%, #2c3e50 100%); color: white; 
+                      padding: 25px 15px; text-align: center; border-radius: 12px; margin-bottom: 20px; }
+            .container { max-width: 800px; margin: 0 auto; }
+            .card { background: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+                    margin-bottom: 25px; overflow: hidden; border: 1px solid #e1e4e8; }
+            .card-header { padding: 12px 15px; font-weight: bold; font-size: 16px; border-bottom: 1px solid #f0f0f0; }
+            .standard { background-color: #f0f7ff; color: #0056b3; } /* 正向颜色 */
+            .inverse { background-color: #fff9f0; color: #9a6300; }  /* 倒数颜色 */
+            img { width: 100%; height: auto; display: block; }
+            .info { padding: 12px 15px; font-size: 13px; color: #666; background: #fafafa; }
+            .footer { text-align: center; padding: 30px; color: #999; font-size: 12px; }
+            b { color: #333; }
         </style>
     </head>
     <body>
-        <h1>📊 Bidirectional Exchange Rate Matrix</h1>
-        <p class="subtitle">Full analysis of 15 pairs (30 total directions) | Paired for easy comparison</p>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin:0; font-size: 22px;">Currency Matrix Analysis</h1>
+                <p style="margin:10px 0 0 0; opacity: 0.8;">Paired Reciprocal Rates (30 Directions)</p>
+            </div>
     """
 
-    print(f"🔄 正在按配对逻辑处理 15 组对称汇率...")
+    content = ""
+    print(f"📱 正在构造移动端优化版 HTML (一行一个)...")
 
-    # 2. 循环处理每一对组合
-    for name1, name2 in base_pairs:
-        html_content += '<div class="row">'
+    for n1, n2 in base_pairs:
+        # 对每一对组合，生成两个方向
+        directions = [
+            (n1, n2, "Standard", "standard"), # A -> B
+            (n2, n1, "Inverse", "inverse")    # B -> A
+        ]
         
-        # 定义两个方向：A->B 和 B->A
-        directions = [(name1, name2, "#3498db", "Standard"), (name2, name1, "#e67e22", "Inverse")]
-        
-        for n1, n2, color, label in directions:
+        for name_from, name_to, label, css_class in directions:
             # 计算汇率
-            val1 = df[f"USD{n1}"] if n1 != "USD" else 1.0
-            val2 = df[f"USD{n2}"] if n2 != "USD" else 1.0
+            val1 = df[f"USD{name_from}"] if name_from != "USD" else 1.0
+            val2 = df[f"USD{name_to}"] if name_to != "USD" else 1.0
             cross_rate = val2 / val1
             
-            # 绘图
-            plt.figure(figsize=(8, 5))
-            plt.plot(cross_rate.index, cross_rate, color=color, marker='o', linewidth=2)
-            
-            # 极值标注
+            # 极值
             max_val, max_date = cross_rate.max(), cross_rate.idxmax()
             min_val, min_date = cross_rate.min(), cross_rate.idxmin()
-            plt.annotate(f'Peak: {max_val:.4f}', xy=(max_date, max_val), xytext=(5,5), textcoords='offset points', color='red', weight='bold', size=9)
-            plt.annotate(f'Floor: {min_val:.4f}', xy=(min_date, min_val), xytext=(5,-15), textcoords='offset points', color='green', weight='bold', size=9)
-            
-            plt.title(f'{n1} to {n2}', color='#34495e')
-            plt.xlabel('Date')
-            plt.grid(True, alpha=0.2)
+
+            # 绘图 (DPI 设为 100 保证清晰度)
+            plt.figure(figsize=(10, 5))
+            plt.plot(cross_rate.index, cross_rate, color='#3498db' if label=="Standard" else '#e67e22', linewidth=2.5)
+            plt.title(f"{name_from} to {name_to}", fontsize=14, fontweight='bold')
+            plt.grid(True, linestyle='--', alpha=0.4)
             plt.tight_layout()
 
             # 转 Base64
             buf = BytesIO()
-            plt.savefig(buf, format='png', dpi=100) # 稍微降低 dpi 减小 HTML 体积
+            plt.savefig(buf, format='png', dpi=100)
             plt.close()
-            img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
-            
-            # 生成卡片
-            card_class = "card" if label == "Standard" else "card reverse"
-            html_content += f"""
-                <div class="{card_class}">
-                    <h3>{n1} ➜ {n2} <span class="badge">{label}</span></h3>
-                    <img src="data:image/png;base64,{img_str}" />
-                </div>
-            """
-        
-        html_content += '</div>' # 结束当前行
+            img_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
 
-    html_content += """
-        <div class="footer">
-            <p>End of Task | Data Grounding: 2026 Financial Archive</p>
+            # 构造单列卡片
+            content += f"""
+            <div class="card">
+                <div class="card-header {css_class}">
+                    {name_from} ➜ {name_to} ({label})
+                </div>
+                <img src="data:image/png;base64,{img_b64}">
+                <div class="info">
+                    <b>Peak:</b> {max_val:.4f} <span style="color:#999;">({max_date.strftime('%Y-%m-%d')})</span><br>
+                    <b>Floor:</b> {min_val:.4f} <span style="color:#999;">({min_date.strftime('%Y-%m-%d')})</span>
+                </div>
+            </div>
+            """
+
+    html_end = """
+            <div class="footer">
+                <p>Data Source: Exchangerate API | Generated via GitHub Actions</p>
+            </div>
         </div>
     </body>
     </html>
     """
+    return html_start + content + html_end
 
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    
-    print(f"✨ 对称式报告已生成: {output_file}")
-
-
-
-def send_currency_report(html_file, receiver_email):
+def send_currency_report(html_text):
     # --- 1. 邮件基础配置 ---
     sender_email = os.getenv("EMAIL_SENDER") # 发件人地址
     sender_password = os.getenv("EMAIL_PASSWORD") # 注意：通常是“应用专用密码”，而非登录密码
     smtp_server = "smtp.gmail.com"       # 如 smtp.gmail.com 或 smtp.office365.com
     smtp_port = 587                        # 常用端口：587 (TLS) 或 465 (SSL)
 
-    # 创建邮件容器
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = os.getenv('EMAIL_RECEIVERS', '') # 可以是逗号分隔的多个地址
-    msg['Subject'] = f"📊 Daily Exchange Rate Analysis Report - {pd.Timestamp.now().strftime('%Y-%m-%d')}"
+    receivers_raw = os.getenv('EMAIL_RECEIVERS') 
+    
+    if not sender_email or not sender_password:
+        print("❌ 错误：环境变量 EMAIL_SENDER 或 EMAIL_PASSWORD 未设置！")
+        return
 
-    # --- 2. 邮件正文 (简短导语) ---
-    body = """
-    Hi Team,
-
-    Please find the comprehensive exchange rate analysis report attached. 
-    The report covers 30 bidirectional currency pairs with peak and floor annotations.
-
-    Best regards,
-    Automated Financial Reporter
-    """
-    msg.attach(MIMEText(body, 'plain'))
-
-    # --- 3. 读取并添加 HTML 附件 ---
+    # 2. 读取 HTML 文件内容
     try:
-        with open(html_file, "rb") as attachment:
-            part = MIMEBase("application", "octet-stream")
-            part.set_payload(attachment.read())
+        html_body = html_text
+    except Exception as e:
+        print(f"❌ 读取 HTML 失败: {e}")
+        return
+
+    # 3. 构造邮件对象
+    # 注意：这里直接使用 MIMEMultipart('alternative') 
+    # 这样可以让邮件客户端优先渲染 HTML 部分
+    msg = MIMEMultipart('alternative')
+    msg['From'] = sender_email
+    
+    # 整理接收者列表
+    receiver_list = [r.strip() for r in receivers_raw.split(',') if r.strip()]
+    msg['To'] = ", ".join(receiver_list) if receiver_list else ''
+    msg['Subject'] = f"📊 Daily Exchange Rate Report - {pd.Timestamp.now().strftime('%Y-%m-%d')}"
+
+    # 将 HTML 内容作为正文添加
+    msg.attach(MIMEText(html_body, 'html'))
+
+    # 4. 执行发送
+    try:
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
         
-        encoders.encode_base64(part)
-        part.add_header(
-            "Content-Disposition",
-            f"attachment; filename= {os.path.basename(html_file)}",
-        )
-        msg.attach(part)
-        
-        # --- 4. 发送邮件 ---
         server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()  # 启用安全传输
+        server.starttls()
         server.login(sender_email, sender_password)
         server.send_message(msg)
         server.quit()
         
-        print(f"🚀 报告已成功发送至: {receiver_email}")
+        print(f"🚀 报告已成功作为【邮件正文】发送至: {msg['To']}")
         
     except Exception as e:
         print(f"❌ 发送失败: {e}")
@@ -263,9 +265,8 @@ def main():
     # Fetch timeseries (base USD)
     print("Fetching timeseries from exchangerate.host ...")
     rates = fetch_timeseries(start_date, end_date,base='USD', symbols=CURRENCIES)
-    # generate the html report with paired charts
-    generate_aligned_report(rates)
-    send_currency_report('paired_currency_report.html', 'boss@example.com')
+    # generate the html report with paired charts and annotations
+    send_currency_report(construct_mobile_friendly_html(rates))
 
 if __name__ == "__main__":
     try:
