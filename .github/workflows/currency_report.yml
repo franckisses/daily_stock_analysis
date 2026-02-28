@@ -28,9 +28,9 @@ jobs:
       - name: Execute Currency Script
         env:
           # 从 GitHub Secrets 中读取敏感信息
-          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
-          SENDER_PASS: ${{ secrets.SENDER_PASS }}
-          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+          SENDER_EMAIL: ${{ secrets.EMAIL_SENDER }}
+          SENDER_PASS: ${{ secrets.EMAIL_PASSWORD }}
+          RECEIVER_EMAIL: ${{ secrets.EMAIL_RECEIVERS }}
           # 如果你的 API Key 也是私密的，可以加在这里
           API_ACCESS_KEY: ${{ secrets.API_ACCESS_KEY }} 
         run: |
