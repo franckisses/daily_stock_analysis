@@ -259,7 +259,8 @@ def send_currency_report(html_text):
 def main():
     print("Starting fetch and plot of currency rates (past 1 year)...")
     ensure_dirs()
-    start_date, end_date = compute_date_range(years=1)
+    years = int(os.getenv("DATE_RANGE", 1))
+    start_date, end_date = compute_date_range(years=years)
     print(f"Date range: {start_date} -> {end_date}")
 
     # Fetch timeseries (base USD)
