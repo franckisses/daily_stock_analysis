@@ -167,6 +167,8 @@ def construct_mobile_friendly_html(exchange_data):
             # 极值
             max_val, max_date = cross_rate.max(), cross_rate.idxmax()
             min_val, min_date = cross_rate.min(), cross_rate.idxmin()
+            current_val = cross_rate.iloc[-1]
+            current_date = cross_rate.index[-1]
 
             # 绘图 (DPI 设为 100 保证清晰度)
             plt.figure(figsize=(10, 5))
@@ -190,7 +192,8 @@ def construct_mobile_friendly_html(exchange_data):
                 <img src="data:image/png;base64,{img_b64}">
                 <div class="info">
                     <b>Peak:</b> {max_val:.4f} <span style="color:#999;">({max_date.strftime('%Y-%m-%d')})</span><br>
-                    <b>Floor:</b> {min_val:.4f} <span style="color:#999;">({min_date.strftime('%Y-%m-%d')})</span>
+                    <b>Floor:</b> {min_val:.4f} <span style="color:#999;">({min_date.strftime('%Y-%m-%d')})</span><br>
+                    <b>Current:</b> {current_val:.4f} <span style="color:#999;">({current_date.strftime('%Y-%m-%d')})</span><br>
                 </div>
             </div>
             """
