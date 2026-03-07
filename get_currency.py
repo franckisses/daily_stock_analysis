@@ -170,6 +170,12 @@ def construct_mobile_friendly_html(exchange_data):
             current_val = cross_rate.iloc[-1]
             current_date = cross_rate.index[-1]
 
+            # --- ✨ 新增：买入/卖出信号逻辑 ---
+            # 计算当前值在区间中的百分比位置 (0% 为最低, 100% 为最高)
+            range_span = max_val - min_val
+            # 避免除以 0 (如果汇率一直没变)
+            position_pct = (current_val - min_val) / range_span if range_span != 0 else 0.5
+
             # 绘图 (DPI 设为 100 保证清晰度)
             plt.figure(figsize=(10, 5))
             plt.plot(cross_rate.index, cross_rate, color='#3498db' if label=="Standard" else '#e67e22', linewidth=2.5)
@@ -183,6 +189,14 @@ def construct_mobile_friendly_html(exchange_data):
             plt.close()
             img_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
 
+            signal_html = ""
+            if position_pct < 0.1: # 处于底部 10% 区间
+                signal_html = '<b style="color:#27ae60; background:#eafaf1; padding:2px 6px; border-radius:4px;">📈 BUY SIGNAL (Near Floor)</b>'
+            elif position_pct > 0.9: # 处于顶部 10% 区间
+                signal_html = '<b style="color:#e74c3c; background:#fdedec; padding:2px 6px; border-radius:4px;">📉 SELL SIGNAL (Near Peak)</b>'
+            else:
+                signal_html = '<span style="color:#95a5a6;">⚖️ Neutral (Range Bound)</span>'
+
             # 构造单列卡片
             content += f"""
             <div class="card">
@@ -193,7 +207,8 @@ def construct_mobile_friendly_html(exchange_data):
                 <div class="info">
                     <b>Peak:</b> {max_val:.4f} <span style="color:#999;">({max_date.strftime('%Y-%m-%d')})</span><br>
                     <b>Floor:</b> {min_val:.4f} <span style="color:#999;">({min_date.strftime('%Y-%m-%d')})</span><br>
-                    <b>Current:</b> {current_val:.4f} <span style="color:#999;">({current_date.strftime('%Y-%m-%d')})</span><br>
+                    <b style="color:#2980b9;">Current:</b> {current_val:.4f} <span style="color:#999;">({current_date.strftime('%Y-%m-%d')})</span><br>
+                    <div style="margin-top:8px;">{signal_html}</div>
                 </div>
             </div>
             """
