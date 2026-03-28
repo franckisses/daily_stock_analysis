@@ -24,9 +24,14 @@ import pandas as pd
 import requests
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from dotenv import load_dotenv
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ModuleNotFoundError:
+    # In CI, env vars are injected directly. dotenv is optional.
+    pass
 
 
 # --- Configurable constants -------------------------------------------------
