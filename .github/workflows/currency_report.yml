@@ -4,7 +4,10 @@ on:
   schedule:
     # 北京时间每天早上 9:00 运行 (UTC 1:00)
     - cron: '0 1 * * *'
-  workflow_dispatch: # 允许你随时在 GitHub 页面点击 "Run workflow" 手动触发测试
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   run-and-email:
@@ -13,12 +16,14 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip' # 自动缓存依赖，加快后续运行速度
+          cache: 'pip'
 
       - name: Install Dependencies
         run: |
@@ -27,18 +32,30 @@ jobs:
 
       - name: Execute Currency Script
         env:
-          # 从 GitHub Secrets 中读取敏感信息
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECEIVERS: ${{ secrets.EMAIL_RECEIVERS }}
           DATE_RANGE: ${{ vars.DATE_RANGE }}
-          # 如果你的 API Key 也是私密的，可以加在这里
-          API_ACCESS_KEY: ${{ secrets.API_ACCESS_KEY }} 
+          API_ACCESS_KEY: ${{ secrets.API_ACCESS_KEY }}
+          FX_DB_PATH: data/fx_data.db
+          FX_INIT_DAYS: '365'
         run: |
           python get_currency.py
 
+      - name: Commit updated SQLite DB
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ ! -f data/fx_data.db ]; then
+            echo "No SQLite DB file generated."
+            exit 0
+          fi
+          git add data/fx_data.db
+          git diff --cached --quiet && echo "No DB changes to commit." && exit 0
+          git commit -m "chore: update offline FX sqlite database"
+          git push
+
       - name: Upload Report as Artifact (Optional)
-        # 即使邮件发送失败，你也可以在 GitHub Actions 页面直接下载生成的 HTML
         uses: actions/upload-artifact@v4
         with:
           name: currency-report
