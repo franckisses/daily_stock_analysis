@@ -50,7 +50,7 @@ jobs:
             echo "No SQLite DB file generated."
             exit 0
           fi
-          git add data/fx_data.db
+          git add -f data/fx_data.db
           git diff --cached --quiet && echo "No DB changes to commit." && exit 0
           git commit -m "chore: update offline FX sqlite database"
           git push
