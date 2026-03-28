@@ -325,20 +325,21 @@ def construct_mobile_friendly_html(exchange_data):
             range_span = max_val - min_val
             position_pct = (current_val - min_val) / range_span if range_span != 0 else 0.5
 
-            plt.figure(figsize=(10, 5))
-            plt.plot(
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(
                 cross_rate.index,
                 cross_rate,
                 color="#3498db" if label == "Standard" else "#e67e22",
                 linewidth=2.5,
             )
-            plt.title(f"{name_from} to {name_to}", fontsize=14, fontweight="bold")
-            plt.grid(True, linestyle="--", alpha=0.4)
-            plt.tight_layout()
+            ax.set_title(f"{name_from} to {name_to}", fontsize=14, fontweight="bold")
+            ax.grid(True, linestyle="--", alpha=0.4)
+            # Keep enough left padding so Y-axis labels are not clipped on mobile.
+            fig.subplots_adjust(left=0.16, right=0.98, bottom=0.12, top=0.9)
 
             buf = BytesIO()
-            plt.savefig(buf, format="png", dpi=100)
-            plt.close()
+            fig.savefig(buf, format="png", dpi=110, bbox_inches="tight", pad_inches=0.2)
+            plt.close(fig)
             img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
 
             if position_pct < 0.1:
